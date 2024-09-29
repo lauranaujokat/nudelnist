@@ -2,6 +2,37 @@ use rand::Rng;
 
 mod img;
 
+struct NeuralNetwork {
+    weights: Vec<Weights>,
+}
+
+impl NeuralNetwork {
+    fn create(
+        input_layer_size: u64,
+        hidden_layer_amount: u64,
+        hidden_layer_size: u64,
+        output_layer_size: u64,
+    ) -> NeuralNetwork {
+        let mut weights = vec![];
+        //creates input layer weights and adds them to weights
+        weights.push(Weights::create(input_layer_size, hidden_layer_size));
+        //creates hidden layer weights and adds them to weights
+        (0..hidden_layer_amount).for_each(|_| weights.push(Weights::create(hidden_layer_size, hidden_layer_size)));
+        //creats output layer weights and adds them to weights
+        weights.push(Weights::create(hidden_layer_size, output_layer_size));
+        NeuralNetwork {
+            weights
+        }
+    }
+    fn evaluate(&self, input_vector: Vec<f64>) -> Vec<f64> {
+        let mut result = input_vector;
+        for weight in &self.weights {
+            result = weight.vectormultiply(result);
+        }
+        result
+    }
+}
+
 struct Weights {
     matrix: Vec<Vec<f64>>,
 }
@@ -31,20 +62,11 @@ impl Weights {
     }
 }
 fn main() {
-    let test = Weights::create(2, 2);
     let matrix = Weights {
-        matrix: vec![
-            vec![1., 2., 3.],
-            vec![4., 5., 6.],
-            vec![7., 8., 9.]
-        ],
+        matrix: vec![vec![1., 2., 3.], vec![4., 5., 6.], vec![7., 8., 9.]],
     };
-    let vector = vec![
-        10.,
-        11.,
-        12.
-    ];
-    println!("{:?}",matrix.vectormultiply(vector));
+    let vector = vec![10., 11., 12.];
+    println!("{:?}", matrix.vectormultiply(vector));
 
     let test_images = img::images_from_xz("data/test.xz");
 }

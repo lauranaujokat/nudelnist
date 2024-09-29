@@ -1,53 +1,73 @@
+use img::images_from_xz;
 use rand::Rng;
 
 mod img;
 
 struct NeuralNetwork {
-    weights: Vec<Weights>,
+    layers: Vec<Layer>,
 }
 
 impl NeuralNetwork {
+    fn randomize(&mut self) {
+        let mut rng = rand::thread_rng();
+        self.layers.iter_mut().for_each(|weight| {
+            weight.weights.iter_mut().flatten().for_each(|value| {
+                *value += rng.gen_range(-0.01..0.01);
+            })
+        })
+    }
+
     fn create(
-        input_layer_size: u64,
-        hidden_layer_amount: u64,
-        hidden_layer_size: u64,
-        output_layer_size: u64,
+        input_layer_size: usize,
+        hidden_layer_amount: usize,
+        hidden_layer_size: usize,
+        output_layer_size: usize,
     ) -> NeuralNetwork {
-        let mut weights = vec![];
+        let mut connections = vec![];
         //creates input layer weights and adds them to weights
-        weights.push(Weights::create(input_layer_size, hidden_layer_size));
+        connections.push(Layer::create(input_layer_size, hidden_layer_size));
         //creates hidden layer weights and adds them to weights
         (0..hidden_layer_amount)
-            .for_each(|_| weights.push(Weights::create(hidden_layer_size, hidden_layer_size)));
+            .for_each(|_| connections.push(Layer::create(hidden_layer_size, hidden_layer_size)));
         //creats output layer weights and adds them to weights
-        weights.push(Weights::create(hidden_layer_size, output_layer_size));
-        NeuralNetwork { weights }
+        connections.push(Layer::create(hidden_layer_size, output_layer_size));
+        NeuralNetwork {
+            layers: connections,
+        }
     }
+
     fn evaluate(&self, input_vector: Vec<f64>) -> Vec<f64> {
-        self.weights
-            .iter()
-            .fold(input_vector, |result, weight| weight.vectormultiply(result))
+        self.layers.iter().fold(input_vector, |vector, layer| {
+            layer
+                .vectormultiply(vector)
+                .iter()
+                .enumerate()
+                .map(|(index, value)| value + layer.bias[index])
+                .collect()
+        })
     }
 }
 
-struct Weights {
-    matrix: Vec<Vec<f64>>,
+struct Layer {
+    weights: Vec<Vec<f64>>,
+    bias: Vec<f64>,
 }
-impl Weights {
-    fn create(input: u64, output: u64) -> Weights {
-        let mut matrix: Vec<Vec<f64>> = vec![];
+impl Layer {
+    fn create(input: usize, output: usize) -> Layer {
+        let mut weights: Vec<Vec<f64>> = vec![];
         let mut rng = rand::thread_rng();
         for _ in 0..output {
             let neuron_connections: Vec<f64> =
                 (0..input).map(|_| rng.gen_range(-2.0..2.0)).collect();
-            matrix.push(neuron_connections);
+            weights.push(neuron_connections);
         }
-        Weights { matrix }
+        let bias = (0..output).map(|_| rng.gen_range(-2.0..2.0)).collect();
+        Layer { weights, bias }
     }
 
     fn vectormultiply(&self, vector: Vec<f64>) -> Vec<f64> {
         let mut return_vector: Vec<f64> = vec![];
-        for row in &self.matrix {
+        for row in &self.weights {
             let new_entry: f64 = row
                 .iter()
                 .enumerate()
@@ -59,6 +79,6 @@ impl Weights {
     }
 }
 fn main() {
-    let neural_network = NeuralNetwork::create(2, 2, 2, 2);
-    let result = neural_network.evaluate(vec![10., 10.]);
+    // let images = images_from_xz("../data/train.xz");
+    // let neuralnetworks = (0..100).map(|_| NeuralNetwork::create(images[0].data.len(), 5, 20, 10));
 }

@@ -17,19 +17,16 @@ impl NeuralNetwork {
         //creates input layer weights and adds them to weights
         weights.push(Weights::create(input_layer_size, hidden_layer_size));
         //creates hidden layer weights and adds them to weights
-        (0..hidden_layer_amount).for_each(|_| weights.push(Weights::create(hidden_layer_size, hidden_layer_size)));
+        (0..hidden_layer_amount)
+            .for_each(|_| weights.push(Weights::create(hidden_layer_size, hidden_layer_size)));
         //creats output layer weights and adds them to weights
         weights.push(Weights::create(hidden_layer_size, output_layer_size));
-        NeuralNetwork {
-            weights
-        }
+        NeuralNetwork { weights }
     }
     fn evaluate(&self, input_vector: Vec<f64>) -> Vec<f64> {
-        let mut result = input_vector;
-        for weight in &self.weights {
-            result = weight.vectormultiply(result);
-        }
-        result
+        self.weights
+            .iter()
+            .fold(input_vector, |result, weight| weight.vectormultiply(result))
     }
 }
 
@@ -62,11 +59,6 @@ impl Weights {
     }
 }
 fn main() {
-    let matrix = Weights {
-        matrix: vec![vec![1., 2., 3.], vec![4., 5., 6.], vec![7., 8., 9.]],
-    };
-    let vector = vec![10., 11., 12.];
-    println!("{:?}", matrix.vectormultiply(vector));
-
-    let test_images = img::images_from_xz("data/test.xz");
+    let neural_network = NeuralNetwork::create(2, 2, 2, 2);
+    let result = neural_network.evaluate(vec![10., 10.]);
 }

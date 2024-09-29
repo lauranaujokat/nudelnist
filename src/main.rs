@@ -23,10 +23,9 @@ impl NeuralNetwork {
         })
     }
 
-    fn scoring(&mut self, result: Vec<f64>, wanted: usize) {
-        let score = (result[wanted]*2.) - result.iter().sum::<f64>();
+    fn scoring(&mut self, result: &[f64], wanted: usize) {
+        let score = (result[wanted] * 2.) - result.iter().sum::<f64>();
         self.score += score;
-        
     }
 
     fn create(
@@ -52,7 +51,7 @@ impl NeuralNetwork {
     fn evaluate(&self, input_vector: Vec<f64>) -> Vec<f64> {
         self.layers.iter().fold(input_vector, |vector, layer| {
             layer
-                .vectormultiply(vector)
+                .vectormultiply(&vector)
                 .iter()
                 .zip(&layer.bias)
                 .map(|(value, bias)| value + bias)
@@ -78,12 +77,12 @@ impl Layer {
         Layer { weights, bias }
     }
 
-    fn vectormultiply(&self, vector: Vec<f64>) -> Vec<f64> {
+    fn vectormultiply(&self, vector: &[f64]) -> Vec<f64> {
         let mut return_vector: Vec<f64> = vec![];
         for row in &self.weights {
             let new_entry: f64 = row
                 .iter()
-                .zip(&vector)
+                .zip(vector)
                 .map(|(value, vector)| f64::max(0., value * vector))
                 .sum();
             return_vector.push(new_entry);
@@ -91,19 +90,18 @@ impl Layer {
         return_vector
     }
 }
-fn prune(images: Vec<Img>, mut neural_networks: Vec<NeuralNetwork>) -> Vec<NeuralNetwork>{
+fn prune(images: &[Img], mut neural_networks: Vec<NeuralNetwork>) -> Vec<NeuralNetwork> {
     neural_networks.par_iter_mut().for_each(|neural_network| {
-        for image in &images {
+        for image in images {
             let result = neural_network.evaluate(image.data.clone());
-            neural_network.scoring(result, image.number as usize);
+            neural_network.scoring(&result, image.number as usize);
         }
     });
     neural_networks.sort_by(|a, b| b.score.partial_cmp(&a.score).unwrap());
     neural_networks.into_iter().take(10).collect()
 }
-fn train(images: Vec<Img>, mut neural_networks: Vec<NeuralNetwork>){
-    let best_neural_networks = prune(images, neural_networks);
-
+fn train(images: Vec<Img>, neural_networks: Vec<NeuralNetwork>) {
+    let best_neural_networks = prune(&images, neural_networks);
 }
 fn main() {
     let images = images_from_xz("./data/train.xz");
@@ -111,6 +109,6 @@ fn main() {
         .map(|_| NeuralNetwork::create(images[0].data.len(), 5, 20, 10))
         .collect();
     let now = Instant::now();
-    prune(images, neural_networks);
+    prune(&images, neural_networks);
     println!("{}", now.elapsed().as_secs());
 }

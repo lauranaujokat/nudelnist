@@ -1,4 +1,7 @@
 use rand::Rng;
+
+mod img;
+
 struct Weights {
     matrix: Vec<Vec<f64>>,
 }
@@ -42,4 +45,6 @@ fn main() {
         12.
     ];
     println!("{:?}",matrix.vectormultiply(vector));
+
+    let test_images = img::images_from_xz("data/test.xz");
 }

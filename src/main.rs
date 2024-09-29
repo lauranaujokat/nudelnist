@@ -41,8 +41,8 @@ impl NeuralNetwork {
             layer
                 .vectormultiply(vector)
                 .iter()
-                .enumerate()
-                .map(|(index, value)| value + layer.bias[index])
+                .zip(&layer.bias)
+                .map(|(value, bias)| value + bias)
                 .collect()
         })
     }
@@ -70,8 +70,8 @@ impl Layer {
         for row in &self.weights {
             let new_entry: f64 = row
                 .iter()
-                .enumerate()
-                .map(|(index, &value)| value * vector[index])
+                .zip(&vector)
+                .map(|(value, vector)| value * vector)
                 .sum();
             return_vector.push(new_entry);
         }

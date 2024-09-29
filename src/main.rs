@@ -1,10 +1,13 @@
-use img::images_from_xz;
+use img::{images_from_xz, Img};
 use rand::Rng;
+use rayon::prelude::*;
+use std::time::Instant;
 
 mod img;
 
 struct NeuralNetwork {
     layers: Vec<Layer>,
+    score: f64,
 }
 
 impl NeuralNetwork {
@@ -18,6 +21,12 @@ impl NeuralNetwork {
                 *value += rng.gen_range(-0.01..0.01);
             })
         })
+    }
+
+    fn scoring(&mut self, result: Vec<f64>, wanted: usize) {
+        let score = (result[wanted]*2.) - result.iter().sum::<f64>();
+        self.score += score;
+        
     }
 
     fn create(
@@ -36,6 +45,7 @@ impl NeuralNetwork {
         connections.push(Layer::create(hidden_layer_size, output_layer_size));
         NeuralNetwork {
             layers: connections,
+            score: 0.,
         }
     }
 
@@ -74,14 +84,33 @@ impl Layer {
             let new_entry: f64 = row
                 .iter()
                 .zip(&vector)
-                .map(|(value, vector)| value * vector)
+                .map(|(value, vector)| f64::max(0., value * vector))
                 .sum();
             return_vector.push(new_entry);
         }
         return_vector
     }
 }
+fn prune(images: Vec<Img>, mut neural_networks: Vec<NeuralNetwork>) -> Vec<NeuralNetwork>{
+    neural_networks.par_iter_mut().for_each(|neural_network| {
+        for image in &images {
+            let result = neural_network.evaluate(image.data.clone());
+            neural_network.scoring(result, image.number as usize);
+        }
+    });
+    neural_networks.sort_by(|a, b| b.score.partial_cmp(&a.score).unwrap());
+    neural_networks.into_iter().take(10).collect()
+}
+fn train(images: Vec<Img>, mut neural_networks: Vec<NeuralNetwork>){
+    let best_neural_networks = prune(images, neural_networks);
+
+}
 fn main() {
-    // let images = images_from_xz("../data/train.xz");
-    // let neuralnetworks = (0..100).map(|_| NeuralNetwork::create(images[0].data.len(), 5, 20, 10));
+    let images = images_from_xz("./data/train.xz");
+    let neural_networks = (0..100)
+        .map(|_| NeuralNetwork::create(images[0].data.len(), 5, 20, 10))
+        .collect();
+    let now = Instant::now();
+    prune(images, neural_networks);
+    println!("{}", now.elapsed().as_secs());
 }

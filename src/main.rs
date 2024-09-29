@@ -10,8 +10,11 @@ struct NeuralNetwork {
 impl NeuralNetwork {
     fn randomize(&mut self) {
         let mut rng = rand::thread_rng();
-        self.layers.iter_mut().for_each(|weight| {
-            weight.weights.iter_mut().flatten().for_each(|value| {
+        self.layers.iter_mut().for_each(|layer| {
+            layer.weights.iter_mut().flatten().for_each(|value| {
+                *value += rng.gen_range(-0.01..0.01);
+            });
+            layer.bias.iter_mut().for_each(|value| {
                 *value += rng.gen_range(-0.01..0.01);
             })
         })

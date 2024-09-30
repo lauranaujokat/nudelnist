@@ -144,8 +144,12 @@ fn main() {
     let images = images_from_xz("./data/train.xz");
     let mut pool = NetworkPool::create(NeuralNetwork::create(images[0].data.len(), 5, 20, 10), 50);
 
-    loop {
-        pool.train(&images[0..1]);
-        println!("score: {}", pool.nets[0].score);
-    }
+    #[allow(clippy::infinite_iter)]
+    images.chunks(25).cycle().enumerate().for_each(|(i, imgs)| {
+        pool.train(imgs);
+
+        if i % 100 == 0 {
+            println!("score: {}", pool.nets[0].score);
+        }
+    });
 }

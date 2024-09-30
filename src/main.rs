@@ -5,6 +5,7 @@ use std::time::Instant;
 
 mod img;
 
+#[derive(Clone)]
 struct NeuralNetwork {
     layers: Vec<Layer>,
     score: f64,
@@ -24,8 +25,7 @@ impl NeuralNetwork {
     }
 
     fn scoring(&mut self, result: &[f64], wanted: usize) {
-        let score = (result[wanted] * 2.) - result.iter().sum::<f64>();
-        self.score += score;
+        self.score = (result[wanted] * 2.) - result.iter().sum::<f64>();
     }
 
     fn create(
@@ -55,11 +55,13 @@ impl NeuralNetwork {
                 .iter()
                 .zip(&layer.bias)
                 .map(|(value, bias)| value + bias)
+                .map(sigmoid)
                 .collect()
         })
     }
 }
 
+#[derive(Clone)]
 struct Layer {
     weights: Vec<Vec<f64>>,
     bias: Vec<f64>,
@@ -90,25 +92,60 @@ impl Layer {
         return_vector
     }
 }
-fn prune(images: &[Img], mut neural_networks: Vec<NeuralNetwork>) -> Vec<NeuralNetwork> {
-    neural_networks.par_iter_mut().for_each(|neural_network| {
-        for image in images {
-            let result = neural_network.evaluate(image.data.clone());
-            neural_network.scoring(&result, image.number as usize);
+
+struct NetworkPool {
+    pub nets: Vec<NeuralNetwork>,
+}
+impl NetworkPool {
+    pub fn create(network: NeuralNetwork, network_amount: usize) -> Self {
+        Self {
+            nets: vec![network; network_amount],
         }
-    });
-    neural_networks.sort_by(|a, b| b.score.partial_cmp(&a.score).unwrap());
-    neural_networks.into_iter().take(10).collect()
+    }
+    pub fn eval(&mut self, images: &[Img]) {
+        self.nets.par_iter_mut().for_each(|neural_network| {
+            for image in images {
+                let result = neural_network.evaluate(image.data.clone());
+                neural_network.scoring(&result, image.number as usize);
+            }
+        });
+    }
+    pub fn sort_by_score(&mut self) {
+        self.nets
+            .sort_by(|a, b| b.score.partial_cmp(&a.score).unwrap());
+    }
+    pub fn change(&mut self) {
+        self.nets.iter_mut().for_each(|net| net.randomize());
+    }
+    pub fn train(&mut self, images: &[Img]) {
+        self.eval(images);
+        self.sort_by_score();
+
+        let best = self.nets[0].clone();
+        self.nets.fill(best.clone());
+
+        self.change();
+
+        self.eval(images);
+        self.sort_by_score();
+
+        if self.nets[0].score < best.score {
+            self.nets[0] = best;
+        }
+    }
 }
-fn train(images: Vec<Img>, neural_networks: Vec<NeuralNetwork>) {
-    let best_neural_networks = prune(&images, neural_networks);
+
+pub fn sigmoid(input: f64) -> f64 {
+    1.0 / (1.0 + f64::exp(-input))
 }
+
 fn main() {
     let images = images_from_xz("./data/train.xz");
-    let neural_networks = (0..100)
-        .map(|_| NeuralNetwork::create(images[0].data.len(), 5, 20, 10))
-        .collect();
-    let now = Instant::now();
-    prune(&images, neural_networks);
-    println!("{}", now.elapsed().as_secs());
+
+    let mut pool = NetworkPool::create(NeuralNetwork::create(images[0].data.len(), 5, 20, 10), 50);
+
+    loop {
+        pool.train(&images[0..1]);
+        println!("score: {}", pool.nets[0].score);
+    }
 }

@@ -94,12 +94,13 @@ impl Layer {
 }
 
 struct NetworkPool {
-    pub nets: Vec<NeuralNetwork>,
+    #[allow(clippy::vec_box)]
+    pub nets: Vec<Box<NeuralNetwork>>,
 }
 impl NetworkPool {
     pub fn create(network: NeuralNetwork, network_amount: usize) -> Self {
         Self {
-            nets: vec![network; network_amount],
+            nets: vec![Box::new(network); network_amount],
         }
     }
     pub fn eval(&mut self, images: &[Img]) {
@@ -141,7 +142,6 @@ pub fn sigmoid(input: f64) -> f64 {
 
 fn main() {
     let images = images_from_xz("./data/train.xz");
-
     let mut pool = NetworkPool::create(NeuralNetwork::create(images[0].data.len(), 5, 20, 10), 50);
 
     loop {
